@@ -475,7 +475,7 @@ __user_xdg_data_dirs() {
     # menu entries and add them to the menu. The user directory is not
     # added by default.
     STEP "Adding user directories to XDG_DATA_DIRS..."
-cat << EOF | FWRITE /etc/profile.d/user-xdg-data-dirs.sh
+cat << EOF | FWRITE "/etc/profile.d/user-xdg-data-dirs.sh"
 #!/bin/bash
 
 HOME_LOCAL_BIN="\$HOME/.local/bin"
@@ -624,7 +624,7 @@ OPS_DESC=(
     "Force Mesa to use Zink, an OpenGL driver implemented with Vulkan (System-wide + Flatpak)"
     "Installs various essential font typefaces"
     "Installs and configures Game Mode"
-    "Configures ZRam with 25% of the Physical RAM, limited to  a maximum of 8GB of swap"
+    "Configures ZRam with 25% of the Physical RAM, limited to a maximum of 8GB"
     "Adds some UDEV rules for best IO performance and audio responsiveness"
     "Configures some kernel parameters to improve system performance"
     "Enables Transparent Huge Pages. Increases system performance, but also increases memory usage slightly"
@@ -632,7 +632,7 @@ OPS_DESC=(
     "Configures SDDM to run on Wayland. NOTE: Only for KDE!"
     "Sets up Chaotic AUR repository. NOTE: Requires manual intervention afterwards!"
     "Sets up CachyOS x86_64-v3 repositories. NOTE: requires manual intervetion afterwards!"
-    "Adds ~/.local/bin to PATH and ~/.local/share/applications to XDG_DATA_DIRS (for detecting user desktop entries)."
+    "Adds ~/.local/bin to PATH and ~/.local/share/applications to XDG_DATA_DIRS (for detecting user desktop entries)"
     "Adds a colorful .bashrc and a .bash_profile to /etc/skel"
 )
 
