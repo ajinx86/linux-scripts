@@ -263,8 +263,8 @@ __mesa_zink_opengl() {
 
 __fonts() {
     STEP "Installing fonts ..."
-    SUDO pacman -S --noconfirm pacman -S --noconfirm ttf-croscore ttf-liberation ttf-dejavu \
-        ttf-ibm-plex ttf-opensans ttf-montserrat ttf-carlito ttf-bitstream-vera ttf-caladea \
+    SUDO pacman -S --noconfirm ttf-croscore ttf-liberation ttf-dejavu ttf-ibm-plex \
+        ttf-opensans ttf-montserrat ttf-carlito ttf-bitstream-vera ttf-caladea \
         gnu-free-fonts noto-fonts noto-fonts-extra noto-fonts-cjk noto-fonts-emoji \
         otf-fira-sans otf-fira-mono ttf-ubuntu-font-family otf-libertinus
 }
