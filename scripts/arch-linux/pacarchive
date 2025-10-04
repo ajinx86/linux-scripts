@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Prints the URL to a package archive
+
+
+# check cmdline args
+case "$1" in
+	*=*)
+		;;
+	*)
+        echo -e "Downgrades packages to specific versions"
+	echo -e "Usage:  $(basename $0) <name>=<version>\n" >&2
+
+	echo "Examples:" >&2
+	echo -e "\tglibc=2.36-1" >&2
+	echo -e "\tpacman=7.0.0.r1.g7cf2b01-1" >&2
+	exit 1
+	;;
+esac
+
+
+# Print package URL
+PKGNAME=$(echo "$1" | cut -d '=' -f 1)
+PKGVER=$(echo "$1" | cut -d '=' -f 2)
+
+OSARCH=$(uname -m)
+
+if [ -z "$PKGNAME" ] || [ -z "$PKGVER" ]; then
+	echo "Invalid input: $1" >&2
+	exit 1
+fi
+
+sudo pacman -U "https://archive.archlinux.org/packages/${PKGNAME:0:1}/${PKGNAME}/${PKGNAME}-${PKGVER}-${OSARCH}.pkg.tar.zst"

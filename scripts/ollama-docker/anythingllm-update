@@ -1,0 +1,35 @@
+#!/bin/bash
+
+Zecho () { echo -e "\e[1;94m$@\e[m"; }
+
+# pull updated image
+Zecho "==> Pulling updated image..."
+docker pull mintplexlabs/anythingllm:latest
+
+# stop running instance
+Zecho "==> Stopping running instance..."
+docker stop anythingllm
+
+# delete instance
+Zecho "==> Removing old instance..."
+docker rm anythingllm
+
+# create new updated instance
+Zecho "==> Creating updated instance..."
+docker run -d \
+	--network host \
+	--cap-add SYS_ADMIN \
+	-e STORAGE_DIR="/app/server/storage" \
+	-e SERVER_PORT=3000 \
+	-v anythingllm:/app/server \
+	-v anythingllm-storage:/app/server/storage \
+	--restart always \
+	--name anythingllm \
+	mintplexlabs/anythingllm
+
+# remove dangling images
+Zecho "==> Cleaning up..."
+docker image prune --force
+
+# finish up
+Zecho "==> Done!"

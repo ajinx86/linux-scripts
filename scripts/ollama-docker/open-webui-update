@@ -1,0 +1,32 @@
+#!/bin/bash
+
+Zecho () { echo -e "\e[1;94m$@\e[m"; }
+
+# pull updated image
+Zecho "==> Pulling updated image..."
+docker pull ghcr.io/open-webui/open-webui:main
+
+# stop running instance
+Zecho "==> Stopping running instance..."
+docker stop open-webui
+
+# delete instance
+Zecho "==> Removing old instance..."
+docker rm open-webui
+
+# create new updated instance
+Zecho "==> Creating updated instance..."
+docker run -d -p 3000:8080 \
+	-e WEBUI_AUTH=False \
+	--add-host=host.docker.internal:host-gateway \
+	-v open-webui:/app/backend/data \
+	--name open-webui \
+	--restart always \
+	ghcr.io/open-webui/open-webui:main
+
+# remove dangling images
+Zecho "==> Cleaning up..."
+docker image prune --force
+
+# finish up
+Zecho "==> Done!"

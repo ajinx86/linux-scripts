@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $(basename $0) <icon-name> <folder>"
+  exit 1
+fi
+
+if ! [ -d $2 ]; then
+  echo "error: directory not found: $2"
+  exit 1
+fi
+
+
+gio set "$2" metadata::custom-icon-name "$1"

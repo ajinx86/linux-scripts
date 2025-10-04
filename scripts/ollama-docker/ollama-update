@@ -1,0 +1,33 @@
+#!/bin/bash
+
+INFO () { echo -e "\e[1;94m==> $@\e[m"; }
+
+# pull updated image
+INFO "==> Pulling updated image..."
+docker pull ollama/ollama:rocm
+
+# stop running instance
+INFO "==> Stopping running instance..."
+docker stop ollama
+
+# delete instance
+INFO "==> Removing old instance..."
+docker rm ollama
+
+# create new updated instance
+INFO "==> Creating updated instance..."
+docker run -d -p 11434:11434 \
+	--device /dev/kfd \
+	--device /dev/dri \
+	-e HSA_OVERRIDE_GFX_VERSION=10.3.0 \
+	-v ollama:/root/.ollama \
+	--restart always \
+	--name ollama \
+	ollama/ollama:rocm
+
+# remove dangling images
+INFO "==> Cleaning up..."
+docker image prune --force
+
+# finish up
+INFO "==> Done!"

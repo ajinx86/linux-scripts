@@ -1,0 +1,676 @@
+#!/bin/bash
+
+
+INFO()  { echo -e "\e[1;92m==> $@\e[0m"; }
+STEP()  { echo -e "\e[1;94m -> $@\e[0m"; }
+NOTE()  { echo -e "\e[1;36mNOTE: $@\e[0m"; }
+ERROR() { echo -e "\e[1;31mERROR: $@\e[0m"; }
+
+
+SUDO() {
+    if command -v sudo > /dev/null; then
+        sudo $@
+    else
+        ERROR "SUDO is not installed. Please run \'$(basename $0) sudo\'"
+        exit 1
+    fi
+}
+
+
+FWRITE() {
+    cat - | SUDO tee "$1" > /dev/null
+}
+
+
+HIGHLIGHT() {
+    local tmp="$(cat -)"
+    echo -e "\e[1m${tmp}\e[0m"
+}
+
+
+# === ALL OPS ===
+
+
+__sudo() {
+    STEP "Installing sudo..."
+    su root -c "pacman -S --noconfirm sudo"
+
+    STEP "Configuring sudo..."
+    su root -c "
+cat << EOF > /etc/sudoers.d/10_default
+# Allow users of group 'wheel' to use sudo
+%wheel ALL=(ALL:ALL) ALL
+
+# Enable password feedback (shows *** when typing password)
+Defaults pwfeedback
+EOF"
+
+    if ! [[ "$(groups $USER)" = *"wheel"* ]]; then
+        NOTE "User $USER is not in the 'wheel' group. Would you like to add $USER to the 'wheel' group? [y/n] "
+        read answer
+
+        case "$answer" in
+            yY)
+                STEP "Adding $USER to the 'wheel' group..."
+                su root -c "usermod -aG wheel $USER" ;;
+            *)
+                INFO "$USER was NOT added to the 'wheel' group."
+                ;;
+        esac
+
+        NOTE "Please, re-login for the changes to take effect."
+    fi
+}
+
+
+__bluetooth_drivers() {
+    STEP "Installing Bluetooth tools: bluez-tools bluez-utils ..."
+    SUDO pacman -S --noconfirm bluez-tools bluez-utils
+
+    STEP "Enabling Bluetooth service..."
+    SUDO systemctl enable --now bluetooth.service
+}
+
+
+__input_drivers() {
+    STEP "Installing xf86-input-evdev xf86-input-wacom ..."
+    SUDO pacman -S --noconfirm xf86-input-evdev xf86-input-wacom
+}
+
+
+__graphics_drivers() {
+    STEP "Installing vulkan-radeon ..."
+    SUDO pacman -S --noconfirm vulkan-radeon
+}
+
+
+__sound_drivers() {
+    INFO "Installing sound drivers..."
+
+    STEP "Installing: pipewire-alsa pipewire-jack pipewire-libcamera ..."
+    SUDO pacman -S --noconfirm pipewire-alsa pipewire-jack pipewire-libcamera
+
+    STEP "Installing: sof-firmware"
+    SUDO pacman -S --noconfirm sof-firmware
+}
+
+
+__cups() {
+    STEP "Installing print driver: cups ..."
+    SUDO pacman -S --noconfirm cups
+
+    STEP "Installing color calibration tools: argyllcms ..."
+    SUDO pacman -S --noconfirm colord
+    SUDO pacman -S --noconfirm --asdeps argyllcms
+
+    STEP "Installing printer setup tool: system-config-printer ..."
+    SUDO pacman -S --noconfirm --asdeps system-config-printer
+
+    STEP "Enabling CUPS service..."
+    SUDO systemctl enable --now cups
+}
+
+
+__sane() {
+    STEP "Installing scanner driver: sane ..."
+    SUDO pacman -S --noconfirm sane
+
+    STEP "Installing color calibration tools: argyllcms ..."
+    SUDO pacman -S --noconfirm colord colord-sane
+    SUDO pacman -S --noconfirm --asdeps argyllcms
+}
+
+
+__ibus() {
+    STEP "Installing IBus..."
+    SUDO pacman -S --noconfirm ibus
+}
+
+
+__gst_codecs() {
+    STEP "Installing GStreamer codecs..."
+    SUDO pacman -S --noconfirm gst-plugins-bad gst-plugins-good gst-plugins-ugly gst-libav
+}
+
+
+__ddcutil() {
+    STEP "Installing display tools..."
+    SUDO pacman -S --noconfirm ddcutil
+    SUDO pacman -S --noconfirm --asdeps read-edid
+
+    STEP "Setting up kernel drivers: i2c-dev ..."
+    echo "i2c-dev" | FWRITE "/etc/modules-load.d/i2c-dev.conf"
+}
+
+
+__flatpak() {
+    STEP "Installing Flatpak..."
+    SUDO pacman -S --noconfirm flatpak flatpak-xdg-utils
+}
+
+
+__flatpak_beta_repo() {
+    if ! command -v flatpak > /dev/null; then
+        ERROR "Flatpak is not installed."
+        return 1
+    fi
+
+    STEP "Setting up Flathub Beta ..."
+    SUDO flatpak --system remote-add --if-not-exists flathub-beta https://flathub.org/beta-repo/flathub-beta.flatpakrepo
+
+    STEP "Configuring Flatpak repo priority ..."
+    SUDO flatpak --system remote-modify flathub --prio=2
+    SUDO flatpak --system remote-modify flathub-beta --prio=1
+}
+
+
+__flatpak_allow_gamemode() {
+    if command -v flatpak > /dev/null; then
+        ERROR "Flatpak is not installed."
+        return 1
+    fi
+
+    STEP "Allowing Game Mode globally on Flatpak..."
+    SUDO flatpak --system override --talk=com.feralinteractive.GameMode
+}
+
+
+__flatpak_allow_discord_ipc() {
+    if command -v flatpak > /dev/null; then
+        ERROR "Flatpak is not installed."
+        return 1
+    fi
+
+    STEP "Setting up Discord IPC access on Flatpak..."
+    SUDO flatpak --system override --filesystem=xdg-run/discord-ipc-0
+}
+
+
+__basic_tools() {
+    STEP "Installing basic tools: nano nano-syntax-highlighting trash-cli tree less nvme-cli usbutils..."
+    SUDO pacman -S --noconfirm nano nano-syntax-highlighting trash-cli tree less nvme-cli usbutils
+}
+
+
+__graphics_tools() {
+    STEP "Installing graphics tools: mesa-utils libva-utils vulkan-tools clinfo vdpauinfo..."
+    SUDO pacman -S --noconfirm mesa-utils libva-utils vulkan-tools clinfo vdpauinfo
+}
+
+
+__firmware_tools() {
+    STEP "Installing firmware tools: dosfstools mtools efibootmgr fwupd fwupd-efi ..."
+    SUDO pacman -S --noconfirm dosfstools mtools efibootmgr fwupd fwupd-efi
+}
+
+
+__doc_tools() {
+    STEP "Installing documentation tools: man-db man-pages texinfo ..."
+    SUDO pacman -S --noconfirm man-db man-pages texinfo
+}
+
+
+__dev_tools() {
+    STEP "Installing development tools ..."
+    SUDO pacman -S --noconfirm git github-cli moreutils valgrind gcc gdb meson ninja make
+}
+
+
+__vdpau_radeonsi() {
+    STEP "Configuring VDPAU driver..."
+    echo "VDPAU_DRIVER=radeonsi" | FWRITE "/etc/environment.d/30-vdpau.conf"
+
+    if command -v flatpak > /dev/null; then
+        STEP "Configuring VDPAU driver for Flatpak..."
+        SUDO flatpak override --system --env=VDPAU_DRIVER=radeonsi
+    else
+        STEP "Flatpak not found. Skipped."
+    fi
+
+    NOTE "Please, re-login for the changes to take effect."
+}
+
+
+__rusticl_radeonsi() {
+    STEP "Configuring Rusticl OpenCL driver..."
+    echo "RUSTICL_ENABLE=radeonsi" | FWRITE "/etc/environment.d/30-opencl-rusticl.conf"
+
+    if command -v flatpak > /dev/null; then
+        STEP "Configuring Rusticl OpenCL driver for Flatpak..."
+        SUDO flatpak override --system --env=RUSTICL_ENABLE=radeonsi
+    else
+        STEP "Flatpak not found. Skipped."
+    fi
+
+    NOTE "Please, re-login for the changes to take effect."
+}
+
+
+__mesa_zink_opengl() {
+    STEP "Configuring Zink OpenGL driver..."
+    echo "MESA_OVERRIDE_LOADER_DRIVER=zink" | FWRITE "/etc/environment.d/30-mesa-opengl-zink.conf"
+
+    if command -v flatpak > /dev/null; then
+        STEP "Configuring Zink OpenGL driver for Flatpak..."
+        SUDO flatpak override --system --env=MESA_OVERRIDE_LOADER_DRIVER=zink
+    else
+        STEP "Flatpak not found. Skipped."
+    fi
+
+    NOTE "Please, re-login for the changes to take effect."
+}
+
+
+__fonts() {
+    STEP "Installing fonts ..."
+    SUDO pacman -S --noconfirm pacman -S --noconfirm ttf-croscore ttf-liberation ttf-dejavu \
+        ttf-ibm-plex ttf-opensans ttf-montserrat ttf-carlito ttf-bitstream-vera ttf-caladea \
+        gnu-free-fonts noto-fonts noto-fonts-extra noto-fonts-cjk noto-fonts-emoji \
+        otf-fira-sans otf-fira-mono ttf-ubuntu-font-family otf-libertinus
+}
+
+
+__gamemode() {
+    STEP "Installing Game Mode ..."
+    SUDO pacman -S --noconfirm gamemode
+
+    STEP "Activating Game Mode service..."
+    SUDO systemctl enable --global gamemoded.service
+
+    STEP "Setting up NTSync kernel driver..."
+    echo "ntsync" | FWRITE "/etc/modules-load.d/30-ntsync.conf"
+}
+
+
+__zram() {
+    STEP "Installing: zram-generator ..."
+    SUDO pacman -S --noconfirm zram-generator
+
+    STEP "Setting up ZRam..."
+    cat << EOF | FWRITE "/etc/systemd/zram-generator.conf"
+[zram0]
+zram-size = min(ram / 4, 8192)
+compress = zstd
+options = discard
+EOF
+
+    NOTE "Please, restart your system for the changes to take effect."
+}
+
+
+__udev_perf_rules() {
+    NOTE "Credits: CachyOS"
+
+    STEP "Setting up HPET permissions for audio..."
+    cat << EOF | FWRITE "/etc/udev/rules.d/40-hpet-permissions.rules"
+KERNEL=="rtc0", GROUP="audio"
+KERNEL=="hpet", GROUP="audio"
+EOF
+
+    STEP "Setting up IO schedulers..."
+    cat << EOF | FWRITE "/etc/udev/rules.d/60-ioschedulers.rules"
+# HDD
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+
+# SSD
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+
+# NVMe SSD
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+EOF
+
+    STEP "Setting up CPU DMA latency..."
+    cat << EOF | FWRITE "/etc/udev/rules.d/99-cpu-dma-latency.rules"
+DEVPATH=="/devices/virtual/misc/cpu_dma_latency", OWNER="root", GROUP="audio", MODE="0660"
+EOF
+
+    NOTE "Please, restart your computer for the changes to take effect."
+}
+
+
+__kernel_perf_rules() {
+    NOTE "Credits: CachyOS"
+
+    cat << EOF | FWRITE "/etc/sysctl.d/10-default.conf"
+# Reduce tendency to swap
+vm.swappiness = 100
+
+# Reduce tendency to reclaim cache memory
+vm.vfs_cache_pressure = 50
+
+# Controls the number of pages read from swap at once. Defaults to 3.
+# Recommended: 1 page for swaps in SSD and 2 pages for swaps in HDD.
+vm.page-cluster = 0
+
+# Increase network device queue. May prevent packet loss.
+net.core.netdev_max_backlog = 4096
+
+# Disable Watchdog. This increases boot and shutdown. Not recommended for servers!
+kernel.nmi_watchdog = 0
+EOF
+
+    NOTE "Please, restart your computer for the changes to take effect."
+}
+
+
+__transparent_huge_pages() {
+    NOTE "Credits: CachyOS"
+
+    INFO "Setting up Transparent Huge Pages (THP)..."
+
+    # enable THP
+    cat << EOF | FWRITE "/etc/tmpfiles.d/10-transparent-huge-page.conf"
+# Improve performance for applications that use tcmalloc
+# https://github.com/google/tcmalloc/blob/master/docs/tuning.md#system-level-optimizations
+w! /sys/kernel/mm/transparent_hugepage/defrag - - - - defer+madvise
+EOF
+
+    # enable THP shrinking
+    cat << EOF | FWRITE "/etc/tmpfiles.d/11-transparent-huge-page-shrinker.conf"
+# THP Shrinker has been added in the 6.12 Kernel
+# Default Value is 511
+# The 'THP=always' policy vastly overprovisions THPs in sparsely accessed memory areas,
+# resulting in excessive memory pressure and premature OOM killing.
+# 409 means that any THP that has more than 409 out of 512 (80%) zero filled filled pages will be split.
+# This reduces the memory usage, when THP=always used and the memory usage goes down to around the same
+# usage as when madvise is used, while still providing an equal performance improvement.
+w! /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none - - - - 409
+EOF
+
+    NOTE "Please, restart your computer for the changes to take effect."
+}
+
+
+__glibc_malloc_economic() {
+    SUDO mkdir -p /etc/environment.d
+
+    STEP "Setting up system glibc malloc..."
+    echo "MALLOC_MMAP_THRESHOLD_=65536" | FWRITE "/etc/environment.d/01-glibc-malloc.conf"
+
+    if command -v flatpak > /dev/null; then
+        STEP "Setting up Flatpak glibc malloc..."
+        SUDO flatpak --system override --env=MALLOC_MMAP_THRESHOLD_=65536
+    else
+        INFO "Flatpak not found. Skipped."
+    fi
+
+    NOTE "Please, restart your computer for the changes to take effect."
+}
+
+
+__kde_sddm_use_wayland() {
+    if ! command -v sddm > /dev/null; then
+        ERROR "SDDM not installed."
+        return 1
+    fi
+
+    SUDO mkdir -p /etc/sddm.conf.d
+
+    STEP "Setting up SDDM Wayland..."
+    cat << EOF | FWRITE "/etc/sddm.conf.d/10-wayland.conf"
+[General]
+DisplayServer=wayland
+GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
+
+[Wayland]
+CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1
+EOF
+}
+
+
+__chaotic_aur() {
+    STEP "Installing repository keys..."
+    SUDO pacman-key --recv-key 3056513887B78AEB --keyserver keyserver.ubuntu.com
+    SUDO pacman-key --lsign-key 3056513887B78AEB
+
+    STEP "Installing mirrors and keyring..."
+    SUDO pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-keyring.pkg.tar.zst'
+    SUDO pacman -U --noconfirm 'https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst'
+
+    NOTE "Please, add this snippet to your /etc/pacman.conf at the end of the file."
+
+    cat << EOF | HIGHLIGHT
+[chaotic-aur]
+Include = /etc/pacman.d/chaotic-mirrorlist
+EOF
+}
+
+
+__cachyos_v3() {
+    STEP "Installing repository keys..."
+    sudo pacman-key --recv-keys F3B607488DB35A47 --keyserver keyserver.ubuntu.com
+    sudo pacman-key --lsign-key F3B607488DB35A47
+
+    STEP "Installing mirrors and keyring..."
+    SUDO pacman -U --noconfirm \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-keyring-20240331-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-mirrorlist-22-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v3-mirrorlist-22-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos-v4-mirrorlist-22-1-any.pkg.tar.zst' \
+        'https://mirror.cachyos.org/repo/x86_64/cachyos/pacman-7.0.0.r7.g1f38429-1-x86_64.pkg.tar.zst'
+
+    STEP "Installing debuginfod URLs..."
+    echo "https://debuginfod.cachyos.org" | FWRITE "/etc/debuginfod/cachyos.urls"
+
+    NOTE "Please, add the following lines to your /etc/pacman.conf ABOVE the [core] section:"
+
+    cat << EOF | HIGHLIGHT
+[cachyos-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+
+[cachyos-core-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+
+[cachyos-extra-v3]
+Include = /etc/pacman.d/cachyos-v3-mirrorlist
+
+[cachyos]
+Include = /etc/pacman.d/cachyos-mirrorlist
+EOF
+}
+
+
+__user_xdg_data_dirs() {
+    # XDG_DATA_DIRS is a variable that is watched by the DE to detect
+    # menu entries and add them to the menu. The user directory is not
+    # added by default.
+    STEP "Adding user directories to XDG_DATA_DIRS..."
+cat << EOF | FWRITE /etc/profile.d/user-xdg-data-dirs.sh
+#!/bin/bash
+
+HOME_LOCAL_BIN="\$HOME/.local/bin"
+HOME_LOCAL_SHARE_APPLICATIONS="\$HOME/.local/share/applications"
+
+if [ -d "\$HOME_LOCAL_BIN" ]; then
+  append_path "\$HOME_LOCAL_BIN"
+fi
+
+if [ -d "\$HOME_LOCAL_BIN" ]; then
+  export XDG_DATA_DIRS="\$XDG_DATA_DIRS:\$HOME_LOCAL_SHARE_APPLICATIONS"
+fi
+
+# remove vars
+unset HOME_LOCAL_BIN
+unset HOME_LOCAL_SHARE_APPLICATIONS
+EOF
+}
+
+
+__pretty_skel() {
+    INFO "Setting up pretty skel..."
+
+    cat << EOF | FWRITE "/etc/skel/.bashrc"
+#
+# ~/.bashrc
+#
+
+# If not running interactively, don't do anything
+[[ \$- != *i* ]] && return
+
+# set history size
+HISTSIZE=1000
+
+# prevent duplicates
+HISTCONTROL=ignoreboth
+
+# append to the history instead of overwriting
+shopt -s histappend
+
+# check terminal window size to update \$LINES and \$COLUMNS
+shopt -s checkwinsize
+
+# enable colors
+case "\$TERM" in
+  xterm-color|*-256color)
+    alias ls='ls --color=auto --group-directories-first'
+
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+    alias ip='ip --color=auto'
+    alias tree='tree -C'
+    ;;
+esac
+
+# prompt
+PS1='\[\e[1;96m\]\u\[\e[0m\]@\[\e[1;93m\]\h\[\e[0m\] [\[\e[32m\]\w\[\e[0m\]] \$ '
+
+# ls aliases
+alias ll='ls -l'
+alias la='ls -A'
+alias l='ls -CF'
+
+# load profile definitions
+[[ -f ~/.bash_profile ]] && . ~/.bash_profile
+
+# load bash aliases
+[[ -f ~/.bash_aliases ]] && . ~/.bash_aliases
+EOF
+
+    # Define nano as the default editor and as the default pacdiff editor
+    cat << EOF | FWRITE "/etc/skel/.bash_profile"
+DIFFPROG=nano
+EDITOR=nano
+EOF
+}
+
+
+# === // ===
+
+
+ALL_OPS=(
+    sudo
+    bluetooth_drivers
+    input_drivers
+    sound_drivers
+    graphics_drivers
+    cups
+    sane
+    ibus
+    gst_codecs
+    ddcutil
+    flatpak
+    flatpak_beta_repo
+    flatpak_allow_gamemode
+    flatpak_allow_discord_ipc
+    basic_tools
+    graphics_tools
+    firmware_tools
+    doc_tools
+    dev_tools
+    vdpau_radeonsi
+    rusticl_radeonsi
+    mesa_zink_opengl
+    fonts
+    gamemode
+    zram
+    udev_perf_rules
+    kernel_perf_rules
+    transparent_huge_pages
+    glibc_malloc_economic
+    kde_sddm_use_wayland
+    chaotic_aur
+    cachyos_v3
+    user_xdg_data_dirs
+    pretty_skel
+)
+
+
+OPS_DESC=(
+    "Installs and configures SUDO"
+    "Installs Bluetooth userspace driver and tools"
+    "Installs drivers for Wacom tablet and joysticks"
+    "Installs extra sound firmwares and PipeWire support for ALSA and JACK"
+    "Installs Vulkan drivers for AMD GPUs"
+    "Installs CUPS printing driver, color calibration tools and printer setup software"
+    "Installs SANE scanner driver and color calibration tools"
+    "Installs IBus input method"
+    "Installs GStreamer extra codecs"
+    "Installs DDCUtil tool and sets up kernel drivers for its use"
+    "Installs and configures Flatpak"
+    "Add Flathub Beta remote to Flatpak"
+    "Allow all Flatpak apps to access Game Mode"
+    "Allow all Flatpak apps to access Discord Rich Presence"
+    "Installs terminal system tools: nano, trash-cli tree less nvme-cli usbutils"
+    "Installs command-line graphics testing tools: glxgears, vkgears, vainfo, vulkaninfo, libva-utils vulkan-tools clinfo vdpauinfo"
+    "Installs firmware management and update tools: fwupd, efibootmgr"
+    "Installs documentation tools: man, info"
+    "Installs dev tools: git, github-cli, valgrind, gcc, gdb, meson, ninja, make, errno"
+    "Configure VDPAU to use Radeon driver instead of NVidia driver (System-wide + Flatpak)"
+    "Configure Rusticl OpenCL engine to use Radeon driver (System-wide + Flatpak)"
+    "Force Mesa to use Zink, an OpenGL driver implemented with Vulkan (System-wide + Flatpak)"
+    "Installs various essential font typefaces"
+    "Installs and configures Game Mode"
+    "Configures ZRam with 25% of the Physical RAM, limited to  a maximum of 8GB of swap"
+    "Adds some UDEV rules for best IO performance and audio responsiveness"
+    "Configures some kernel parameters to improve system performance"
+    "Enables Transparent Huge Pages. Increases system performance, but also increases memory usage slightly"
+    "Tune GNU LibC malloc() parameters to reduce memory consumption (System-wide + Flatpak)"
+    "Configures SDDM to run on Wayland. NOTE: Only for KDE!"
+    "Sets up Chaotic AUR repository. NOTE: Requires manual intervention afterwards!"
+    "Sets up CachyOS x86_64-v3 repositories. NOTE: requires manual intervetion afterwards!"
+    "Adds ~/.local/bin to PATH and ~/.local/share/applications to XDG_DATA_DIRS (for detecting user desktop entries)."
+    "Adds a colorful .bashrc and a .bash_profile to /etc/skel"
+)
+
+
+_list_ops() {
+    echo -e "Available operations:\n"
+
+    local num_ops=$((${#ALL_OPS[@]} - 1))
+
+    for x in $(seq 0 $num_ops); do
+        printf -- " - \e[94m%-28s\e[0m %s\n" "${ALL_OPS[$x]}" "${OPS_DESC[$x]}"
+    done
+
+    echo
+}
+
+
+_main() {
+    echo -e "\e[1;36m=== Arch Linux Post-Install ===\e[0m\n"
+
+    local selected_op=$1
+
+    if test -z "$selected_op"; then
+        echo -e "\e[1mUSAGE\e[m: $(basename $0) <operation>\n"
+        _list_ops
+        exit
+    fi
+
+    if echo "${ALL_OPS[@]}" | grep -qw "$selected_op"; then
+        INFO "Running: $selected_op"
+        __$selected_op
+        INFO "Done!"
+    else
+        ERROR "Invalid operation: $selected_op\n"
+        _list_ops
+        exit 1
+    fi
+}
+
+
+_main "$1"

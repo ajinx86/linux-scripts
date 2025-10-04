@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# qfetch - simple and quick fetch program
+# created by flobzex <github.com/flobzex>
+# free to use, modify and do whatevs (ツ)/
+
+# all commands in C locale
+export LC_ALL=C
+
+# detect colored output support
+case "$TERM" in
+  xterm-color|*-256color)
+    USE_COLORS=true;;
+  *)
+    USE_COLORS=false;;
+esac
+
+# print column with 10 chars, aligned to the left
+cprint() {
+  if $USE_COLORS; then
+    printf "\e[1m%-10s\e[0m : %s\n" "$1" "$2"
+  else
+    printf "%-10s : %s\n" "$1" "$2"
+  fi
+}
+
+
+_osinfo() {
+  local os_name=`cat /etc/os-release | grep PRETTY_NAME | sed -E 's/.+"(.+)"/\1/'`
+  local os_arch=`uname -m`
+
+  echo -n "$os_name $os_arch"
+}
+
+_kerninfo() {
+  echo -n "$(uname -r)"
+}
+
+_uptime() {
+  local secs=`cat /proc/uptime | awk '{ print int($1/60) }'`
+  local mins=$(($secs%60))
+  local hours=$(($secs/60%24))
+  local days=$(($secs/60/24))
+
+  [[ $days -gt 0 ]] && echo -n "$days day(s), "
+  [[ $hours -gt 0 ]] && echo -n "$hours hour(s), "
+
+  echo -n "$mins min(s)"
+}
+
+_terminfo() {
+  if [[ -v TERM_PROGRAM ]]; then
+    echo -n "$TERM_PROGRAM ($TERM_PROGRAM_VERSION)"
+  else
+    echo -n "$(tty)"
+  fi
+}
+
+_cpuinfo() {
+  local cpu_model=`lscpu -pMODELNAME 2>/dev/null | tail -1 | sed -r 's/.+?: (.+)$/\1/'`
+  local cpu_cores=`lscpu -pCPU | tail -1 | awk '{ print $1+1 }'`
+  local cpu_clock=`lscpu -pMAXMHZ | tail -1 | awk '{ print int($1) }'`
+
+  if [[ -z $cpu_model ]]; then
+    cpu_model=`lscpu | grep 'Model name' | sed -E 's/.+:\s+(.+)/\1/'`
+  fi
+
+  if [[ -z $cpu_model ]]; then
+    cpu_model='Unknown'
+  fi
+
+  echo -n "$cpu_model ($cpu_cores) @ $cpu_clock MHz"
+}
+
+_meminfo() {
+  local mem_total=`cat /proc/meminfo | grep MemTotal | awk '{ print $2 }'`
+  local mem_free=`cat /proc/meminfo | grep MemFree | awk '{ print $2 }'`
+  local mem_buffers=`cat /proc/meminfo | grep -E ^Buffers | awk '{ print $2 }'`
+  local mem_cache=`cat /proc/meminfo | grep -E ^Cached | awk '{ print $2 }'`
+  local mem_kreclaim=`cat /proc/meminfo | grep KReclaimable | awk '{ print $2 }'`
+  local mem_used=$(($mem_total - $mem_free - $mem_buffers - $mem_cache - $mem_kreclaim))
+
+  local mem_used_mi=`echo "$mem_used" | awk '{ print int($1/1024) }'`
+  local mem_total_mi=`echo "$mem_total" | awk '{ print int($1/1024) }'`
+
+  echo "$mem_used_mi MiB / $mem_total_mi MiB"
+}
+
+_swapinfo() {
+  local swap_total=`cat /proc/meminfo | grep SwapTotal | awk '{ print int($2/1024) }'`
+  local swap_free=`cat /proc/meminfo | grep SwapFree | awk '{ print int($2/1024) }'`
+  local swap_used=$(($swap_total - $swap_free))
+
+  if [[ $swap_total -gt 0 ]]; then
+    echo "$swap_used MiB / $swap_total MiB"
+  else
+    echo "N/A"
+  fi
+}
+
+_qfetch() {
+  if $USE_COLORS; then
+    echo -e "\e[1m$USER\e[m@\e[1m$HOSTNAME\e[m"
+  else
+    echo "$USER@$HOSTNAME"
+  fi
+
+  echo -e "$USER@$HOSTNAME" | sed -e 's/./-/g'
+
+  cprint "OS"       "$(_osinfo)"
+  cprint "Kernel"   "$(_kerninfo)"
+  cprint "Uptime"   "$(_uptime)"
+  cprint "Terminal" "$(_terminfo)"
+  cprint "CPU"      "$(_cpuinfo)"
+  cprint "RAM"      "$(_meminfo)"
+  cprint "Swap"     "$(_swapinfo)"
+
+  if $USE_COLORS; then
+    echo
+    echo -e " $(for x in $(seq 0 7); do echo -en \\e[1\;3${x}m███\\e[m; done)"
+    echo -e " $(for x in $(seq 0 7); do echo -en \\e[1\;9${x}m███\\e[m; done)"
+  fi
+}
+
+echo -e "\n$(_qfetch)\n"
