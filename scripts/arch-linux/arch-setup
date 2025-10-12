@@ -310,6 +310,20 @@ EOF
 }
 
 
+__udev_usb_drive_perf_rules() {
+    STEP "Setting up USB storage devices' write cache limits..."
+    local min_limit=67108864  # 64  * 1024 * 1024 (64 MiB)
+    local max_limit=134217728 # 128 * 1024 * 1024 (128 MiB)
+
+    CAT << EOF | FWRITE "/etc/udev/rules.d/99-usb-dirty-limits.rules"
+ACTION=="add", KERNEL=="sd[a-z]", SUBSYSTEM=="block", ATTRS{removable}=="1", ENV{DEVTYPE}=="disk", KERNELS=="*usb*", \
+RUN+="/usr/bin/sh -c 'echo 1 > /sys/block/%k/bdi/strict_limit; echo $max_limit > /sys/block/%k/bdi/max_bytes; echo $min_limit > /sys/block/%k/bdi/min_bytes'"
+EOF
+
+    NOTE "Please, restart your computer for the changes to take effect."
+}
+
+
 __udev_perf_rules() {
     NOTE "Credits: CachyOS"
 
@@ -599,6 +613,7 @@ ALL_OPS=(
     gamemode
     zram
     udev_sync_usb_drives
+    udev_usb_drive_perf_rules
     udev_perf_rules
     kernel_perf_rules
     transparent_huge_pages
@@ -638,6 +653,7 @@ OPS_DESC=(
     "Installs and configures Game Mode"
     "Configures ZRam with 25% of the Physical RAM, limited to a maximum of 8GB"
     "Adds a UDEV rule to disable write cache for USB drives (not recommended, slow)"
+    "Adds a UDEV rule to set fixed write cache sizes for USB drives"
     "Adds some UDEV rules for best IO performance and audio responsiveness"
     "Configures some kernel parameters to improve system performance"
     "Enables Transparent Huge Pages. Increases system performance, but also increases memory usage slightly"
