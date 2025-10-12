@@ -315,7 +315,7 @@ __udev_usb_drive_perf_rules() {
     local min_limit=67108864  # 64  * 1024 * 1024 (64 MiB)
     local max_limit=134217728 # 128 * 1024 * 1024 (128 MiB)
 
-    CAT << EOF | FWRITE "/etc/udev/rules.d/99-usb-dirty-limits.rules"
+    cat << EOF | FWRITE "/etc/udev/rules.d/99-usb-dirty-limits.rules"
 ACTION=="add", KERNEL=="sd[a-z]", SUBSYSTEM=="block", ATTRS{removable}=="1", ENV{DEVTYPE}=="disk", KERNELS=="*usb*", \
 RUN+="/usr/bin/sh -c 'echo 1 > /sys/block/%k/bdi/strict_limit; echo $max_limit > /sys/block/%k/bdi/max_bytes; echo $min_limit > /sys/block/%k/bdi/min_bytes'"
 EOF
