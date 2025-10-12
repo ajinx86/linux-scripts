@@ -298,6 +298,18 @@ EOF
 }
 
 
+__udev_sync_usb_drives() {
+    NOTE "Credits: https://forum.manjaro.org/t/decrease-dirty-bytes-for-more-reliable-usb-transfer/120798/4"
+
+    STEP "Adding rule to mount USB drives with sync flag..."
+    cat << EOF | FWRITE "/etc/udev/rules.d/70-sync-usb-drives.rules"
+SUBSYSTEMS=="usb", SUBSYSTEM=="block", ENV{ID_FS_USAGE}=="filesystem", ENV{UDISKS_MOUNT_OPTIONS_DEFAULTS}+="sync", ENV{UDISKS_MOUNT_OPTIONS_ALLOW}+="sync"
+EOF
+
+    NOTE "Please, restart your computer for the changes to take effect."
+}
+
+
 __udev_perf_rules() {
     NOTE "Credits: CachyOS"
 
@@ -586,6 +598,7 @@ ALL_OPS=(
     fonts
     gamemode
     zram
+    udev_sync_usb_drives
     udev_perf_rules
     kernel_perf_rules
     transparent_huge_pages
@@ -624,6 +637,7 @@ OPS_DESC=(
     "Installs various essential font typefaces"
     "Installs and configures Game Mode"
     "Configures ZRam with 25% of the Physical RAM, limited to a maximum of 8GB"
+    "Adds a UDEV rule to disable write cache for USB storage drives"
     "Adds some UDEV rules for best IO performance and audio responsiveness"
     "Configures some kernel parameters to improve system performance"
     "Enables Transparent Huge Pages. Increases system performance, but also increases memory usage slightly"
