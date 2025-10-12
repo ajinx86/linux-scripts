@@ -637,7 +637,7 @@ OPS_DESC=(
     "Installs various essential font typefaces"
     "Installs and configures Game Mode"
     "Configures ZRam with 25% of the Physical RAM, limited to a maximum of 8GB"
-    "Adds a UDEV rule to disable write cache for USB storage drives"
+    "Adds a UDEV rule to disable write cache for USB drives (not recommended, slow)"
     "Adds some UDEV rules for best IO performance and audio responsiveness"
     "Configures some kernel parameters to improve system performance"
     "Enables Transparent Huge Pages. Increases system performance, but also increases memory usage slightly"
