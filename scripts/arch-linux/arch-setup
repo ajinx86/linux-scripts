@@ -246,7 +246,7 @@ __rusticl_radeonsi() {
 }
 
 
-__mesa_zink_opengl() {
+__mesa_use_zink() {
     STEP "Configuring Zink OpenGL driver..."
     echo "MESA_OVERRIDE_LOADER_DRIVER=zink" | FWRITE "/etc/environment.d/30-mesa-opengl-zink.conf"
 
@@ -608,7 +608,7 @@ ALL_OPS=(
     dev_tools
     vdpau_radeonsi
     rusticl_radeonsi
-    mesa_zink_opengl
+    mesa_use_zink
     fonts
     gamemode
     zram
