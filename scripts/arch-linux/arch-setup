@@ -641,7 +641,7 @@ OPS_DESC=(
     "Add Flathub Beta remote to Flatpak"
     "Allow all Flatpak apps to access Game Mode"
     "Allow all Flatpak apps to access Discord Rich Presence"
-    "Installs terminal system tools: nano, trash-cli tree less nvme-cli usbutils"
+    "Installs terminal system tools: nano, trash-cli, tree, less, nvme-cli, usbutils"
     "Installs command-line graphics testing tools: glxgears, vkgears, vainfo, vulkaninfo, libva-utils vulkan-tools clinfo vdpauinfo"
     "Installs firmware management and update tools: fwupd, efibootmgr"
     "Installs documentation tools: man, info"
