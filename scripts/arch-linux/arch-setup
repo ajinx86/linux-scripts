@@ -583,6 +583,19 @@ EOF
 }
 
 
+__systemd_reduce_wait_timeout() {
+    INFO "Reducing systemd wait timeout..."
+
+    SUDO mkdir -p /etc/systemd/system.conf.d
+
+cat << EOF | FWRITE "/etc/systemd/system.conf.d/00-timeout.conf"
+[Manager]
+DefaultTimeoutStartSec=15s
+DefaultTimeoutStopSec=10s
+EOF
+}
+
+
 # === // ===
 
 
@@ -623,6 +636,7 @@ ALL_OPS=(
     cachyos_v3
     user_xdg_data_dirs
     pretty_skel
+    systemd_reduce_wait_timeout
 )
 
 
@@ -663,6 +677,7 @@ OPS_DESC=(
     "Sets up CachyOS x86_64-v3 repositories. NOTE: requires manual intervetion afterwards!"
     "Adds ~/.local/bin to PATH and ~/.local/share/applications to XDG_DATA_DIRS (for detecting user desktop entries)"
     "Adds a colorful .bashrc and a .bash_profile to /etc/skel"
+    "Reduces the systemd wait timeout when rebooting or shutting down the computer"
 )
 
 
