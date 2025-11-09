@@ -596,6 +596,46 @@ EOF
 }
 
 
+__grub_pacman_hooks() {
+    INFO "Installing Pacman hooks..."
+
+    SUDO mkdir -p /etc/pacman.d/hooks
+
+cat << EOF | FWRITE "/etc/pacman.d/hooks/60-grub-install.hook"
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = grub
+
+[Action]
+Description = Installing GRUB...
+Depends = grub
+When = PostTransaction
+Exec = /usr/bin/grub-install --target=x86_64-efi --efi-directory=/boot/efi bootloader-id=Linux
+EOF
+
+cat << EOF | FWRITE "/etc/pacman.d/hooks/90-grub-updade.hook"
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = File
+Target = usr/lib/modules/*/vmlinuz
+
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = grub
+
+[Action]
+Description = Generating GRUB config...
+Depends = grub
+When = PostTransaction
+Exec = /usr/bin/grub-mkconfig -o /boot/grub/grub.cfg
+EOF
+}
+
+
 # === // ===
 
 
@@ -637,6 +677,7 @@ ALL_OPS=(
     user_xdg_data_dirs
     pretty_skel
     systemd_reduce_wait_timeout
+    grub_pacman_hooks
 )
 
 
@@ -678,6 +719,7 @@ OPS_DESC=(
     "Adds ~/.local/bin to PATH and ~/.local/share/applications to XDG_DATA_DIRS (for detecting user desktop entries)"
     "Adds a colorful .bashrc and a .bash_profile to /etc/skel"
     "Reduces the systemd wait timeout when rebooting or shutting down the computer"
+    "Installs Pacman hooks for installing GRUB and generating config after an update (for UEFI systems only!)"
 )
 
 
