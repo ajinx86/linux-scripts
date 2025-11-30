@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [[ command docker &> /dev/null ]]; then
+if ! $(command -v docker &> /dev/null); then
 	echo "error: docker is not installed" >&2
-	exit
+	exit 1
 fi
 
 docker exec -it ollama ollama $@
