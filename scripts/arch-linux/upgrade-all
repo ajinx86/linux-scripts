@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+
+# Pacman
+echo -e "\e[1m==> Pacman\e[0m"
+sudo pacman -Syu
+
+
+# Flatpak
+if $(command -v flatpak &> /dev/null); then
+    echo -e "\e[1m==> Flatpak\e[0m"
+    flatpak update -y
+fi
