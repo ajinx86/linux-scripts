@@ -614,7 +614,7 @@ When = PostTransaction
 Exec = /usr/bin/grub-install --target=x86_64-efi --efi-directory=/boot/efi bootloader-id=Linux
 EOF
 
-cat << EOF | FWRITE "/etc/pacman.d/hooks/90-grub-updade.hook"
+cat << EOF | FWRITE "/etc/pacman.d/hooks/99-grub-updade.hook"
 [Trigger]
 Operation = Install
 Operation = Upgrade
